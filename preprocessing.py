@@ -1,78 +1,108 @@
 import json
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import string
+import pandas as pd
 import re
+import nltk
+from nltk.tokenize import sent_tokenize
+import string
+import emoji
+import contractions
 
-nltk.download('punkt') # Im not sure if it has to be downloaded everytime, but I dont know how to do it otherwise
-nltk.download('stopwords')
-nltk.download('wordnet')
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 
-lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words('english'))
+# Download NLTK resources
+nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
+nltk.download('stopwords', quiet=True)
+nltk.download('wordnet', quiet=True)
+
+
+def retain_relevant_keys(comments_df, submissions_df):
+
+    comments_df = comments_df[['id', 'author', 'link_id', 'parent_id', 'created_utc', 'body', 'score']].copy()
+    submissions_df = submissions_df[['title', 'selftext', 'created_utc', 'url', 'score', 'num_comments']].copy()
+
+    print("Sanity Check")
+    print("Relevant keys for Comments: ", comments_df.keys())
+    print("Relevant keys for Submissions: ", submissions_df.keys())
+
+    return comments_df, submissions_df
+
+
+def remove_deleted_text_fields(comments_df, submissions_df):
+
+    comments_df = comments_df[~comments_df['body'].isin(['[deleted]', '[removed]', ''])]
+    submissions_df = submissions_df[~submissions_df['selftext'].isin(['[deleted]', '[removed]', ''])]
+
+    print("Sanity Check")
+
+    count = 0
+    for index, comment in comments_df.iterrows():
+        if comment['body'] in {'[deleted]', '[removed]', ''}:
+            count += 1
+    print(f"Number of deleted comments after removal: {count}")
+
+    count = 0
+    for index, submission in submissions_df.iterrows():
+        if submission['selftext'] in {'[deleted]', '[removed]', ''}:
+            count += 1
+    print(f"Number of deleted submissions after removal: {count}")
+
+    print(f"Number of comments after removal: {comments_df.shape[0]}")
+    print(f"Number of submissions after removal: {submissions_df.shape[0]}")
+
+    return comments_df, submissions_df
+
+
+def convert_timestamps_to_datetime(comments_df, submissions_df):
+
+    comments_df['created_utc'] = pd.to_datetime(comments_df['created_utc'], unit='s')
+    submissions_df['created_utc'] = pd.to_datetime(submissions_df['created_utc'], unit='s')
+
+    return comments_df, submissions_df
+
 
 def preprocess_text(text):
-    # Normalize text
+
+    lemmatizer = WordNetLemmatizer()
+    stop_words = set(stopwords.words('english'))
+
+    # Expand contractions
+    text = contractions.fix(text)
+
+    # Case Folding
     text = text.lower()
-    text = text.translate(str.maketrans('', '', string.punctuation))
-    
-    # Remove links
-    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
-        
-    # Remove abbreviations
-    text = re.sub(r"n't", " not", text)
-    text = re.sub(r"'re", " are", text)
-    text = re.sub(r"'s", " is", text)
-    text = re.sub(r"'d", " would", text)
-    text = re.sub(r"'ll", " will", text)
-    text = re.sub(r"'t", " not", text)
-    text = re.sub(r"'ve", " have", text)
-    text = re.sub(r"'m", " am", text)
-    
-    # Tokenize text
-    tokens = word_tokenize(text)
-    
-    # Remove stopwords and lemmatize tokens
-    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
-    
-    return tokens
 
-def preprocess_json_file(file_path):
-    data = []
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            entry = json.loads(line)
-            if entry['author'] != '[deleted]':
-                entry['body'] = preprocess_text(entry['body'])
-                data.append(entry)
-    
-    return data
+    # Remove any links
+    url_pattern = r'http\S+|www\S+|https\S+'
+    text = re.sub(url_pattern, '', text, flags=re.MULTILINE)
 
-comments_path = 'astronomy_comments.ndjson'
-submissions_path = 'astronomy_submissions.ndjson'
+    sentences = sent_tokenize(text)
 
-processed_comments = preprocess_json_file(comments_path)
+    all_sentences = []
+    all_words = []
 
-# The submissions do not have 'body', so the function does not work here.
-# Also, we have to decide if we are going to use them anyway.
-# processed_submissions = preprocess_json_file(submissions_path)
+    for sentence in sentences:
+        # Case folding
+        sentence = sentence.lower()
 
-keys_to_keep = {'body', 'id', 'author', 'score', 'permalink'}
+        # Remove punctuation
+        sentence = re.sub(r'[^a-z0-9\s]', '', sentence)
 
-# Filter the entries to keep only the specified keys
-def filter_entries(processed_data):
-    for entry in processed_data:
-        keys_to_remove = set(entry.keys()) - keys_to_keep
-        for key in keys_to_remove:
-            del entry[key]
+        # Remove extra whitespaces
+        sentence = re.sub(r'\s+', ' ', sentence)
 
-filter_entries(processed_comments)
-# filter_entries(processed_submissions)
+        # Tokenize into words
+        words = word_tokenize(sentence)
 
-with open('processed_astronomy_comments.ndjson', 'w') as file:
-    json.dump(processed_comments, file, indent=4)
+        # Remove stopwords and lemmatize
+        words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
 
-# with open('processed_astronomy_submissions.ndjson', 'w') as file:
-#     json.dump(processed_submissions, file, indent=4)
+        # Add to lists
+        if sentence != '':
+            all_sentences.append(sentence)
+
+        all_words.extend(words)
+
+    return all_sentences, all_words

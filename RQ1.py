@@ -54,50 +54,66 @@ def calculate_average_compound_scores(processed_comments, keywords, sentiment_sc
     return keyword_avg_compound_scores
 
 
-with open('preprocessed_comments_json_format.ndjson', 'r', encoding='utf-8') as file:
-    processed_comments = json.load(file)
+def open_preprocessed_comments_json():
+    with open('preprocessed_comments_json_format.ndjson', 'r', encoding='utf-8') as file:
+        processed_comments = json.load(file)
 
-not_processed_comments = []
-with open('astronomy_comments.ndjson', 'r', encoding='utf-8') as file:
-    for line in file:
-        entry = json.loads(line)
-        not_processed_comments.append((entry['body'], entry['id']))
+    return processed_comments
 
 
-vs_id_dict = {}
-analyzer = SentimentIntensityAnalyzer()
-for sentence, id in not_processed_comments:
-   vs = analyzer.polarity_scores(sentence)
-   vs_id_dict[id] = vs
+def open_comments_entry_id():
+    not_processed_comments = []
+    with open('astronomy_comments.ndjson', 'r', encoding='utf-8') as file:
+        for line in file:
+            entry = json.loads(line)
+            not_processed_comments.append((entry['body'], entry['id']))
+
+    return not_processed_comments
+
+def sentiment_analysis(not_processed_comments):
+    vs_id_dict = {}
+    analyzer = SentimentIntensityAnalyzer()
+    for sentence, id in not_processed_comments:
+        vs = analyzer.polarity_scores(sentence)
+        vs_id_dict[id] = vs
+
+    return vs_id_dict
 
 feature_mentions = check_features(processed_comments, keywords)
 keyword_avg_compound_scores = calculate_average_compound_scores(processed_comments, keywords, vs_id_dict, feature_mentions)
-sorted_avg_scores = sorted(keyword_avg_compound_scores.items(), key=lambda item: item[1], reverse=True)
 
-for feature, avg_score in sorted_avg_scores:
-    print(f"{feature}: Average Compound Score = {avg_score}")
+def sort_avg_compound_scores(keyword_avg_compound_scores, print_scores=False):
+    sorted_avg_scores = sorted(keyword_avg_compound_scores.items(), key=lambda item: item[1], reverse=True)
 
-features = [item[0] for item in sorted_avg_scores]
-avg_scores = [item[1] for item in sorted_avg_scores]
+    if print_scores:
+        for feature, avg_score in sorted_avg_scores:
+            print(f"{feature}: Average Compound Score = {avg_score}")
+    
+    return sorted_avg_scores
 
-plt.figure(figsize=(10, 6))
-plt.bar(features, avg_scores, color='skyblue')
-plt.ylabel('Average Compound Score')
-plt.xlabel('Features')
-plt.title('Average Compound Scores for Features in Astronomy Comments')
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.show()
+def plot_avg_compound_scores(sorted_avg_scores):
+    features = [item[0] for item in sorted_avg_scores]
+    avg_scores = [item[1] for item in sorted_avg_scores]
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(features, avg_scores, color='skyblue')
+    plt.ylabel('Average Compound Score')
+    plt.xlabel('Features')
+    plt.title('Average Compound Scores for Features in Astronomy Comments')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()
 
 
-# features = list(feature_mentions.keys())
-# counts = list(feature_mentions.values())
+def plot_feature_mentions(feature_mentions):
+    features = list(feature_mentions.keys())
+    counts = list(feature_mentions.values())
 
-# plt.figure(figsize=(10, 6))
-# plt.bar(features, counts, color='skyblue')
-# plt.ylabel('Number of Mentions')
-# plt.xlabel('Features')
-# plt.title('Feature Mentions in Astronomy Comments')
-# plt.xticks(rotation=45, ha='right')
-# plt.tight_layout()
-# plt.show()
+    plt.figure(figsize=(10, 6))
+    plt.bar(features, counts, color='skyblue')
+    plt.ylabel('Number of Mentions')
+    plt.xlabel('Features')
+    plt.title('Feature Mentions in Astronomy Comments')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()

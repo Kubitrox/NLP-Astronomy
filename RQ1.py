@@ -79,9 +79,6 @@ def sentiment_analysis(not_processed_comments):
 
     return vs_id_dict
 
-feature_mentions = check_features(processed_comments, keywords)
-keyword_avg_compound_scores = calculate_average_compound_scores(processed_comments, keywords, vs_id_dict, feature_mentions)
-
 def sort_avg_compound_scores(keyword_avg_compound_scores, print_scores=False):
     sorted_avg_scores = sorted(keyword_avg_compound_scores.items(), key=lambda item: item[1], reverse=True)
 
@@ -117,3 +114,16 @@ def plot_feature_mentions(feature_mentions):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
+
+
+processed_comments = open_preprocessed_comments_json()
+not_processed_comments = open_comments_entry_id()
+
+vs_id_dict = sentiment_analysis(not_processed_comments)
+feature_mentions = check_features(processed_comments, keywords)
+keyword_avg_compound_scores = calculate_average_compound_scores(processed_comments, keywords, vs_id_dict, feature_mentions)
+
+sorted_avg_compound_scores = sort_avg_compound_scores(keyword_avg_compound_scores, print_scores=False)
+
+plot_feature_mentions(feature_mentions)
+plot_avg_compound_scores(sorted_avg_compound_scores)

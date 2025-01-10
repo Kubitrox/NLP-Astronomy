@@ -72,6 +72,7 @@ def write_to_text_file(data, output_dir):
         file.writelines(line + '\n' for line in data)
 
 
+#RQ1
 def check_features(processed_comments, keywords):
     comments = [entry['words'] for entry in processed_comments]
 
@@ -179,3 +180,71 @@ def plot_feature_mentions(feature_mentions):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
+
+    
+#RQ3
+
+def fine_tune(model,train_data, epochs=7):
+    examples = [Example.from_dict(model.make_doc(text), ann) for text, ann in train_data]
+    optimizer = model.resume_training()
+    for epoch in range(epochs):
+        losses = {}
+        model.update(examples, drop=0.3, losses=losses)
+
+def get_locations(model, tokens, max_tokens=2):
+    doc = model(" ".join(tokens))
+    location_labels = {"LOC", "GPE",}
+    locations = [
+        ent.text for ent in doc.ents 
+        if ent.label_ in location_labels and (max_tokens is None or len(ent) <= max_tokens)
+    ]
+    return locations
+
+def process_file_s(file_path, model):
+    i = 0
+    recomended_locs = []
+    with open(file_path, "r") as file:
+        lines = file.readlines()
+    
+    for line in lines:
+        sentence = line.strip() 
+        if sentence:
+            tokens = sentence.split()
+            loc = get_locations(model, tokens)
+            if loc:
+                recomended_locs.extend(loc)
+        #for testing it with a less lines
+        #     i += 1  
+        # if i == 9000:
+        #     break
+    return recomended_locs
+
+def iterative_location_extraction(model, initial_data, iterations=5):
+    extracted_locations = initial_data
+    for i in range(iterations):
+        extracted_locations = get_locations(model, extracted_locations)
+    return extracted_locations
+
+import matplotlib.pyplot as plt
+from collections import Counter
+
+def plot_top_locations(locations_list, top_n=5):
+    location_counts = Counter(locations_list).most_common(top_n)
+    locations, counts = zip(*location_counts)
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(locations, counts, color='skyblue', edgecolor='black')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.xlabel("Locations", fontsize=14)
+    plt.ylabel("Number of Mentions", fontsize=14)
+    plt.title("Top Mentioned Locations", fontsize=16, weight='bold')
+    plt.xticks(rotation=45, fontsize=12)
+    plt.yticks(fontsize=12)
+    for i, count in enumerate(counts):
+        plt.text(i, count + 0.1, str(count), ha='center', fontsize=12, color='black')
+
+    plt.tight_layout()
+    plt.show()
+
+
+

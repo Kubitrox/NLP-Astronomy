@@ -244,5 +244,29 @@ def plot_top_locations(locations_list, top_n=5):
     plt.tight_layout()
     plt.show()
 
+def turn_lowercase(words):
+    processed_words = []
+    for i in range(len(words)):
+        processed_words.append(words[i].lower())
+    return processed_words
 
+def delete_low_counts(feature_mentions, original_list, limit=5):
+    to_delete = []
+    for feature in feature_mentions:
+        if feature_mentions[feature] < limit:
+            to_delete.append(feature)
+
+    for feature in to_delete:
+        feature_mentions.pop(feature)
+
+    to_delete_in_list = []
+
+    for element in original_list:
+        if element.lower() in to_delete:
+            to_delete_in_list.append(element)
+    
+    for element in to_delete_in_list:
+        original_list.remove(element)
+
+    return feature_mentions, original_list
 

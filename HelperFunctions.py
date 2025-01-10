@@ -4,6 +4,8 @@ import re
 import tldextract
 import matplotlib.pyplot as plt
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from collections import Counter
+from spacy.training import Example
 
 
 def load_ndjson(file_path):
@@ -183,7 +185,6 @@ def plot_feature_mentions(feature_mentions):
 
     
 #RQ3
-
 def fine_tune(model,train_data, epochs=7):
     examples = [Example.from_dict(model.make_doc(text), ann) for text, ann in train_data]
     optimizer = model.resume_training()
@@ -224,9 +225,6 @@ def iterative_location_extraction(model, initial_data, iterations=5):
     for i in range(iterations):
         extracted_locations = get_locations(model, extracted_locations)
     return extracted_locations
-
-import matplotlib.pyplot as plt
-from collections import Counter
 
 def plot_top_locations(locations_list, top_n=5):
     location_counts = Counter(locations_list).most_common(top_n)
